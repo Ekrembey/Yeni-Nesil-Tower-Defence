@@ -21,6 +21,8 @@ namespace Game.Managers
         [SerializeField] private float _minTowerSpacing = 2f;
 
         [SerializeField] private string _groundObjectName = "Plane";
+        
+        [SerializeField] private int _towerCost = 50; // Kule maliyeti (altın)
 
         #endregion
 
@@ -206,14 +208,40 @@ namespace Game.Managers
 
             Debug.Log($"TowerManager: Kule yerleştirme denemesi. Pozisyon: {placePosition}, Mevcut kule sayısı: {_spawnedTowers.Count}");
 
+            // Para kontrolü yap
+            CurrencyManager currencyManager = GameManager.Instance != null ? GameManager.Instance.CurrencyManager : null;
+            
+            if (currencyManager == null)
+            {
+                Debug.LogError("TowerManager: CurrencyManager bulunamadı! Kule yerleştirilemedi.");
+                return;
+            }
+            
+            // Yeterli para var mı kontrol et
+            if (!currencyManager.HasEnoughGold(_towerCost))
+            {
+                Debug.LogWarning($"TowerManager: Yetersiz altın! Kule maliyeti: {_towerCost}, Mevcut altın: {currencyManager.CurrentGold}");
+                return;
+            }
+            
+            // Para harcama işlemi
+            if (!currencyManager.SpendGold(_towerCost))
+            {
+                Debug.LogWarning($"TowerManager: Altın harcanamadı! Kule yerleştirilemedi.");
+                return;
+            }
+            
+            // Kule yerleştirme işlemi
             bool placed = TryPlaceTowerAt(placePosition);
             if (placed)
             {
-                Debug.Log($"TowerManager: Kule başarıyla yerleştirildi. Pozisyon: {placePosition}");
+                Debug.Log($"TowerManager: Kule başarıyla yerleştirildi. Pozisyon: {placePosition}, Harcanan altın: {_towerCost}");
             }
             else
             {
-                Debug.Log($"TowerManager: Kule yerleştirilemedi. Pozisyon: {placePosition}");
+                // Eğer kule yerleştirilemediyse parayı geri ver
+                currencyManager.AddGold(_towerCost);
+                Debug.Log($"TowerManager: Kule yerleştirilemedi, altın geri verildi. Pozisyon: {placePosition}");
             }
         }
 
