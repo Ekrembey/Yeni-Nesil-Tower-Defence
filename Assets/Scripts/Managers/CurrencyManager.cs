@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -94,6 +95,30 @@ namespace Game.Managers
                 Destroy(gameObject);
                 return;
             }
+        }
+        
+        private void OnEnable()
+        {
+            // Sahne yüklendiğinde para sistemini sıfırlamak için event'e abone ol
+            SceneManager.sceneLoaded += OnSceneLoaded;
+        }
+        
+        private void OnDisable()
+        {
+            // Event'ten aboneliği kaldır
+            SceneManager.sceneLoaded -= OnSceneLoaded;
+        }
+        
+        /// <summary>
+        /// Sahne yüklendiğinde çağrılır. Para sistemini sıfırlar.
+        /// </summary>
+        private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+        {
+            // Para sistemini sıfırla (restart için)
+            _isInitialized = false;
+            Initialize();
+            
+            Debug.Log("CurrencyManager: Sahne yüklendi - Para sistemi sıfırlandı.");
         }
         
         #endregion
