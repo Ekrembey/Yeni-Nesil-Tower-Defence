@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using Game.Enemies;
 using Game.Core;
+using Game.Interfaces;
 
 namespace Game.Towers
 {
@@ -77,20 +78,51 @@ namespace Game.Towers
         {
             if (_target != null && !_target.Equals(null))
             {
-                // Önce Health kontrolü yap
-                Health health = _target.GetComponent<Health>();
-                if (health != null && !health.IsDead)
+                // IDamageable interface'i ile hasar ver
+                IDamageable damageable = _target.GetComponent<IDamageable>();
+                if (damageable != null)
                 {
-                    health.TakeDamage(_damage);
+                    damageable.TakeDamage(_damage);
                 }
                 else
                 {
-                    // Health yoksa doğrudan düşmanı imha et
-                    _target.HandleClick();
+                    // IDamageable yoksa Health component'ini kontrol et
+                    Health health = _target.GetComponent<Health>();
+                    if (health != null && !health.IsDead)
+                    {
+                        health.TakeDamage(_damage);
+                    }
+                    else
+                    {
+                        // Hiçbiri yoksa doğrudan düşmanı imha et
+                        _target.HandleClick();
+                    }
                 }
             }
 
             Destroy(gameObject);
+        }
+        
+        /// <summary>
+        /// Collider-based collision için OnTriggerEnter (fizik tabanlı çarpışma)
+        /// </summary>
+        private void OnTriggerEnter(Collider other)
+        {
+            // Hedef düşmana çarptıysa hasar ver
+            Enemy enemy = other.GetComponent<Enemy>();
+            if (enemy != null && enemy == _target)
+            {
+                HitTarget();
+                return;
+            }
+            
+            // Herhangi bir IDamageable objeye çarptıysa hasar ver
+            IDamageable damageable = other.GetComponent<IDamageable>();
+            if (damageable != null)
+            {
+                damageable.TakeDamage(_damage);
+                Destroy(gameObject);
+            }
         }
 
         private IEnumerator DestroyAfterTime()

@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using Game.Core;
 using Game.ScriptableObjects;
 using Game.Managers;
+using Game.Interfaces;
 
 namespace Game.Enemies
 {
@@ -13,7 +14,7 @@ namespace Game.Enemies
     /// </summary>
     [RequireComponent(typeof(Health))]
     [RequireComponent(typeof(EnemyMover))]
-    public class Enemy : MonoBehaviour
+    public class Enemy : MonoBehaviour, IDamageable
     {
         #region Serialized Fields
 
@@ -100,6 +101,83 @@ namespace Game.Enemies
         #endregion
 
         #region Public Methods
+        
+        /// <summary>
+        /// IDamageable interface'i için hasar alma metodu.
+        /// </summary>
+        /// <param name="damage">Alınacak hasar miktarı.</param>
+        public void TakeDamage(float damage)
+        {
+            if (_health != null && !_health.IsDead)
+            {
+                _health.TakeDamage(damage);
+            }
+            else
+            {
+                // Health yoksa direkt öldür
+                Die();
+            }
+        }
+        
+        /// <summary>
+        /// Düşmanı öldürür. Ödül verir ve WaveManager'a bildirir.
+        /// </summary>
+        public void Die()
+        {
+            if (_health != null && _health.IsDead)
+            {
+                // Zaten öldü, tekrar çağrılmasın
+                return;
+            }
+            
+            EnemyData data = _enemyData;
+            if (data == null)
+            {
+                Debug.LogWarning($"Enemy '{name}': EnemyData null, ödül verilemiyor.");
+            }
+            else
+            {
+                // CurrencyManager üzerinden ödül ver
+                CurrencyManager currencyManager = null;
+
+                if (GameManager.Instance != null)
+                {
+                    currencyManager = GameManager.Instance.CurrencyManager;
+                }
+
+                if (currencyManager != null)
+                {
+                    if (data.GoldReward > 0)
+                    {
+                        currencyManager.AddGold(data.GoldReward);
+                        Debug.Log($"Enemy '{name}': {data.GoldReward} altın ödülü verildi.");
+                    }
+
+                    if (data.ShouldGiveDiamondReward())
+                    {
+                        currencyManager.AddDiamond(1);
+                        Debug.Log($"Enemy '{name}': 1 elmas ödülü verildi.");
+                    }
+                }
+                else
+                {
+                    Debug.LogWarning($"Enemy '{name}': CurrencyManager bulunamadı, ödül verilemedi.");
+                }
+            }
+
+            // WaveManager'a düşmanın öldüğünü bildir
+            if (WaveManager.Instance != null)
+            {
+                WaveManager.Instance.OnEnemyKilled();
+            }
+            else
+            {
+                Debug.LogWarning($"Enemy '{name}': WaveManager bulunamadı, OnEnemyKilled çağrılamadı.");
+            }
+
+            // Düşman objesini yok et
+            Destroy(gameObject);
+        }
 
         /// <summary>
         /// Düşmana tıklandığında çalıştırılacak ortak mantık.
@@ -131,56 +209,11 @@ namespace Game.Enemies
         #region Private Methods
 
         /// <summary>
-        /// Düşman öldüğünde çağrılır. Ödülleri verir ve WaveManager'a bildirir.
+        /// Düşman öldüğünde çağrılır. Die() metodunu çağırır.
         /// </summary>
         private void OnHealthDeathHandler()
         {
-            EnemyData data = _enemyData;
-            if (data == null)
-            {
-                Debug.LogWarning($"Enemy '{name}': EnemyData null, ödül verilemiyor.");
-            }
-            else
-            {
-                // CurrencyManager üzerinden ödül ver
-                CurrencyManager currencyManager = null;
-
-                if (GameManager.Instance != null)
-                {
-                    currencyManager = GameManager.Instance.CurrencyManager;
-                }
-
-                if (currencyManager != null)
-                {
-                    if (data.GoldReward > 0)
-                    {
-                        currencyManager.AddGold(data.GoldReward);
-                    }
-
-                    if (data.ShouldGiveDiamondReward())
-                    {
-                        // Şimdilik 1 elmas veriyoruz, ileride EnemyData'ya miktar eklenebilir
-                        currencyManager.AddDiamond(1);
-                    }
-                }
-                else
-                {
-                    Debug.LogWarning($"Enemy '{name}': CurrencyManager bulunamadı, ödül verilemedi.");
-                }
-            }
-
-            // WaveManager'a düşmanın öldüğünü bildir
-            if (WaveManager.Instance != null)
-            {
-                WaveManager.Instance.OnEnemyKilled();
-            }
-            else
-            {
-                Debug.LogWarning($"Enemy '{name}': WaveManager bulunamadı, OnEnemyKilled çağrılamadı.");
-            }
-
-            // Düşman objesini yok et
-            Destroy(gameObject);
+            Die();
         }
 
         /// <summary>
